@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/example/gwm/internal/app/usecase"
 	"github.com/example/gwm/internal/domain"
@@ -147,6 +148,22 @@ func (a *App) runCd(args []string) int {
 		return 1
 	}
 	fmt.Println("cd", path)
+	if err := os.Chdir(path); err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+	cmd := exec.Command(shell)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
 	return 0
 }
 
