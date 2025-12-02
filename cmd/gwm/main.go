@@ -9,6 +9,7 @@ import (
 	"github.com/example/gwm/internal/infra/config"
 	"github.com/example/gwm/internal/infra/fs"
 	"github.com/example/gwm/internal/infra/git"
+	"github.com/example/gwm/internal/infra/setting"
 	tmuxinfra "github.com/example/gwm/internal/infra/tmux"
 	"github.com/example/gwm/internal/interface/cli"
 	"github.com/example/gwm/internal/interface/tui"
@@ -22,10 +23,15 @@ func main() {
 	}
 
 	cfgRepo := config.NewStore(repoDir)
+	settings, err := setting.Load(repoDir)
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
 	configSvc := domain.NewConfigService(cfgRepo, repoDir)
 	wtClient := git.NewWorktreeClient(repoDir)
 	fileOps := fs.NewOperator(repoDir)
-	sessionLauncher := tmuxinfra.NewLauncher()
+	sessionLauncher := tmuxinfra.NewLauncher(settings)
 
 	app := cli.App{
 		Create: &usecase.CreateInteractor{

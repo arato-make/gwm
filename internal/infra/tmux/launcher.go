@@ -15,11 +15,15 @@ import (
 
 // Launcher implements domain.SessionLauncher using tmux with a shell fallback.
 type Launcher struct {
-	server *gotmux.Server
+	server         *gotmux.Server
+	useControlMode bool
 }
 
-func NewLauncher() *Launcher {
-	return &Launcher{server: gotmux.NewServer("", "", nil)}
+func NewLauncher(settings domain.Settings) *Launcher {
+	return &Launcher{
+		server:         gotmux.NewServer("", "", nil),
+		useControlMode: settings.TmuxControlMode,
+	}
 }
 
 func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
@@ -62,8 +66,7 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 		}
 	}
 
-	if err := session.AttachSession(); err != nil {
-		printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
+	if err := l.attachSession(session); err != nil {
 		return err
 	}
 	return nil
@@ -161,4 +164,22 @@ func firstNonEmpty(list []string) string {
 
 func printTmuxFailure(message string) {
 	fmt.Fprintf(os.Stderr, "tmux の起動に失敗しました: %s\n", message)
+}
+
+func (l *Launcher) attachSession(session gotmux.Session) error {
+	// -CC での起動は tmux 外から制御モードで接続したい場合のみ使う。
+	if l.useControlMode && !gotmux.IsInsideTmux() {
+		args := []string{"-CC", "attach-session", "-t", session.Name}
+		if err := gotmux.ExecCmd(args); err != nil {
+			printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
+			return err
+		}
+		return nil
+	}
+
+	if err := session.AttachSession(); err != nil {
+		printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
+		return err
+	}
+	return nil
 }
