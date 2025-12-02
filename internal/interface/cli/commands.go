@@ -164,17 +164,39 @@ func (a *App) runRemove(args []string) int {
 	if err := fs.Parse(reorderRemoveArgs(args)); err != nil {
 		return 1
 	}
-	if fs.NArg() != 1 {
-		fmt.Println("usage: gwm remove <branch> [--force]")
-		return 1
-	}
-
 	if a.Remove == nil {
 		fmt.Println("error: remove usecase not configured")
 		return 1
 	}
 
-	in := usecase.RemoveInput{Branch: fs.Arg(0), Force: *force}
+	branch := ""
+	if fs.NArg() == 1 {
+		branch = fs.Arg(0)
+	} else if fs.NArg() == 0 {
+		list, err := a.Remove.Worktrees.ListWorktrees()
+		if err != nil {
+			fmt.Println("error:", err)
+			return 1
+		}
+		if len(list) == 0 {
+			fmt.Println("error: no worktrees")
+			return 1
+		}
+		if a.Select == nil {
+			return respondForCd(list)
+		}
+		wt, err := a.Select(list)
+		if err != nil {
+			fmt.Println("error:", err)
+			return 1
+		}
+		branch = wt.Branch
+	} else {
+		fmt.Println("usage: gwm remove <branch> [--force]")
+		return 1
+	}
+
+	in := usecase.RemoveInput{Branch: branch, Force: *force}
 	out, err := a.Remove.Execute(in)
 	if err != nil {
 		fmt.Println("error:", err)

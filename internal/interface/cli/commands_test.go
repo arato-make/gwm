@@ -1,12 +1,13 @@
 package cli
 
 import (
+	"errors"
+	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/example/gwm/internal/app/usecase"
 	"github.com/example/gwm/internal/domain"
-	"os"
 )
 
 type memoryConfigRepo struct {
@@ -18,10 +19,15 @@ type stubWorktrees struct {
 	force  bool
 }
 
-func (s *stubWorktrees) BranchExists(string) (bool, error)             { return false, nil }
-func (s *stubWorktrees) CreateBranch(string) error                     { return nil }
-func (s *stubWorktrees) AddWorktree(string) (string, error)            { return "", nil }
-func (s *stubWorktrees) ListWorktrees() ([]domain.WorktreeInfo, error) { return nil, nil }
+func (s *stubWorktrees) BranchExists(string) (bool, error)  { return false, nil }
+func (s *stubWorktrees) CreateBranch(string) error          { return nil }
+func (s *stubWorktrees) AddWorktree(string) (string, error) { return "", nil }
+func (s *stubWorktrees) ListWorktrees() ([]domain.WorktreeInfo, error) {
+	if s.branch == "" {
+		return []domain.WorktreeInfo{}, nil
+	}
+	return []domain.WorktreeInfo{{Branch: s.branch, Path: "/tmp/worktrees/" + s.branch}}, nil
+}
 func (s *stubWorktrees) RemoveWorktree(branch string, force bool) (string, error) {
 	s.branch = branch
 	s.force = force
@@ -74,5 +80,23 @@ func TestRunRemoveAcceptsBranchBeforeFlag(t *testing.T) {
 	}
 	if wt.branch != "feature/foo" || !wt.force {
 		t.Fatalf("unexpected input: branch=%s force=%v", wt.branch, wt.force)
+	}
+}
+
+func TestRunRemoveWithoutBranchUsesSelector(t *testing.T) {
+	wt := &stubWorktrees{branch: "feature/foo"}
+	selector := func(list []domain.WorktreeInfo) (domain.WorktreeInfo, error) {
+		if len(list) == 0 {
+			return domain.WorktreeInfo{}, errors.New("empty")
+		}
+		return list[0], nil
+	}
+	app := &App{
+		Remove: &usecase.RemoveInteractor{Worktrees: wt, Launcher: stubLauncher{}},
+		Select: selector,
+	}
+
+	if exit := app.runRemove(nil); exit != 0 {
+		t.Fatalf("runRemove returned %d", exit)
 	}
 }
