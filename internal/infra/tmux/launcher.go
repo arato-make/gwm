@@ -37,8 +37,7 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 
 	// tmux が無い場合は従来のシェル起動にフォールバック
 	if !isTmuxAvailable() {
-		printTmuxFailure("tmux が見つかりません")
-		return launchShell(path)
+		return errors.New("tmux が見つかりません")
 	}
 
 	sessionName := sanitizeSessionName(wt.Branch)
@@ -51,25 +50,24 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 
 	has, err := l.server.HasSession(sessionName)
 	if err != nil {
-		// tmux 実行失敗時もシェルにフォールバック
-		printTmuxFailure(fmt.Sprintf("セッション確認に失敗しました: %v", err))
-		return launchShell(path)
+		// サーバーがまだ立ち上がっていない場合でも新規作成を試みる
+		printTmuxFailure(fmt.Sprintf("セッション確認に失敗しました (新規作成を試みます): %v", err))
 	}
 
 	var session gotmux.Session
-	if has {
+	if err == nil && has {
 		session = gotmux.Session{Name: sessionName}
 	} else {
 		session, err = l.server.NewSession(sessionName, "-c", path)
 		if err != nil {
 			printTmuxFailure(fmt.Sprintf("セッション作成に失敗しました: %v", err))
-			return launchShell(path)
+			return err
 		}
 	}
 
 	if err := session.AttachSession(); err != nil {
 		printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
-		return launchShell(path)
+		return err
 	}
 	return nil
 }
@@ -77,22 +75,6 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 func isTmuxAvailable() bool {
 	_, err := exec.LookPath("tmux")
 	return err == nil
-}
-
-// launchShell starts the user's shell from the given directory.
-func launchShell(path string) error {
-	if err := os.Chdir(path); err != nil {
-		return err
-	}
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
-	cmd := exec.Command(shell)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	return cmd.Run()
 }
 
 func sanitizeSessionName(name string) string {

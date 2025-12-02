@@ -32,6 +32,7 @@ func main() {
 			Worktrees: wtClient,
 			Config:    cfgRepo,
 			FileOps:   fileOps,
+			Launcher:  sessionLauncher,
 		},
 		Config: &usecase.ConfigInteractor{Service: configSvc},
 		Cd:     &usecase.CdInteractor{Worktrees: wtClient, Launcher: sessionLauncher},

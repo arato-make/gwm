@@ -19,6 +19,7 @@ type CreateInteractor struct {
 	Worktrees domain.WorktreeService
 	Config    domain.ConfigRepository
 	FileOps   domain.FileOperator
+	Launcher  domain.SessionLauncher
 }
 
 func (u *CreateInteractor) Execute(in CreateInput) (CreateOutput, error) {
@@ -50,5 +51,13 @@ func (u *CreateInteractor) Execute(in CreateInput) (CreateOutput, error) {
 		return out, err
 	}
 	out.Messages = append(out.Messages, fmt.Sprintf("%d file(s) deployed", len(entries)))
+
+	if u.Launcher != nil {
+		wt := domain.WorktreeInfo{Branch: in.Branch, Path: path}
+		if err := u.Launcher.Launch(wt); err != nil {
+			return out, err
+		}
+		out.Messages = append(out.Messages, "tmux session launched")
+	}
 	return out, nil
 }
