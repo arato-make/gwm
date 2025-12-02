@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/example/gwm/internal/app/usecase"
 	"github.com/example/gwm/internal/domain"
@@ -80,7 +81,7 @@ func (a *App) runConfig(args []string) int {
 func (a *App) runConfigAdd(args []string) int {
 	fs := flag.NewFlagSet("config add", flag.ContinueOnError)
 	mode := fs.String("mode", "copy", "copy|symlink")
-	if err := fs.Parse(args); err != nil {
+	if err := fs.Parse(reorderConfigAddArgs(args)); err != nil {
 		return 1
 	}
 	if fs.NArg() < 1 {
@@ -169,3 +170,15 @@ func respondForCd(list []domain.WorktreeInfo) int {
 }
 
 var ErrCancel = errors.New("cancelled")
+
+// reorderConfigAddArgs allows "gwm config add <path> --mode ..." by moving the
+// first positional argument to the end so that flag parsing still works.
+func reorderConfigAddArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	if !strings.HasPrefix(args[0], "-") {
+		return append(args[1:], args[0])
+	}
+	return args
+}
