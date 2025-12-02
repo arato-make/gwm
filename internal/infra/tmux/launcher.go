@@ -2,6 +2,7 @@ package tmux
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -36,6 +37,7 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 
 	// tmux が無い場合は従来のシェル起動にフォールバック
 	if !isTmuxAvailable() {
+		printTmuxFailure("tmux が見つかりません")
 		return launchShell(path)
 	}
 
@@ -50,6 +52,7 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 	has, err := l.server.HasSession(sessionName)
 	if err != nil {
 		// tmux 実行失敗時もシェルにフォールバック
+		printTmuxFailure(fmt.Sprintf("セッション確認に失敗しました: %v", err))
 		return launchShell(path)
 	}
 
@@ -59,11 +62,13 @@ func (l *Launcher) Launch(wt domain.WorktreeInfo) error {
 	} else {
 		session, err = l.server.NewSession(sessionName, "-c", path)
 		if err != nil {
+			printTmuxFailure(fmt.Sprintf("セッション作成に失敗しました: %v", err))
 			return launchShell(path)
 		}
 	}
 
 	if err := session.AttachSession(); err != nil {
+		printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
 		return launchShell(path)
 	}
 	return nil
@@ -105,4 +110,8 @@ func sanitizeSessionName(name string) string {
 		return -1
 	}, name)
 	return strings.Trim(s, "-_")
+}
+
+func printTmuxFailure(message string) {
+	fmt.Fprintf(os.Stderr, "tmux の起動に失敗しました: %s\n", message)
 }
