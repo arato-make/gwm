@@ -21,6 +21,11 @@ type FileOperator interface {
 	Deploy(entries []ConfigEntry, worktreePath string) error
 }
 
+// SessionLauncher launches or attaches to a session (tmuxなど) rooted at the worktree.
+type SessionLauncher interface {
+	Launch(worktree WorktreeInfo) error
+}
+
 // ConfigService offers add/list/remove operations on config entries.
 type ConfigService struct {
 	repo ConfigRepository

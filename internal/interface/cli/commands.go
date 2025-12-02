@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 
 	"github.com/example/gwm/internal/app/usecase"
 	"github.com/example/gwm/internal/domain"
@@ -16,7 +15,7 @@ type App struct {
 	Create *usecase.CreateInteractor
 	Config *usecase.ConfigInteractor
 	Cd     *usecase.CdInteractor
-	Select func([]domain.WorktreeInfo) (string, error)
+	Select func([]domain.WorktreeInfo) (domain.WorktreeInfo, error)
 }
 
 func (a *App) Run(args []string) int {
@@ -142,25 +141,12 @@ func (a *App) runCd(args []string) int {
 	if a.Select == nil {
 		return respondForCd(list)
 	}
-	path, err := a.Select(list)
+	wt, err := a.Select(list)
 	if err != nil {
 		fmt.Println("error:", err)
 		return 1
 	}
-	fmt.Println("cd", path)
-	if err := os.Chdir(path); err != nil {
-		fmt.Println("error:", err)
-		return 1
-	}
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
-	cmd := exec.Command(shell)
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	if err := a.Cd.Launch(wt); err != nil {
 		fmt.Println("error:", err)
 		return 1
 	}

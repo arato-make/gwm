@@ -9,6 +9,7 @@ import (
 	"github.com/example/gwm/internal/infra/config"
 	"github.com/example/gwm/internal/infra/fs"
 	"github.com/example/gwm/internal/infra/git"
+	tmuxinfra "github.com/example/gwm/internal/infra/tmux"
 	"github.com/example/gwm/internal/interface/cli"
 	"github.com/example/gwm/internal/interface/tui"
 )
@@ -24,6 +25,7 @@ func main() {
 	configSvc := domain.NewConfigService(cfgRepo)
 	wtClient := git.NewWorktreeClient(repoDir)
 	fileOps := fs.NewOperator(repoDir)
+	sessionLauncher := tmuxinfra.NewLauncher()
 
 	app := cli.App{
 		Create: &usecase.CreateInteractor{
@@ -32,7 +34,7 @@ func main() {
 			FileOps:   fileOps,
 		},
 		Config: &usecase.ConfigInteractor{Service: configSvc},
-		Cd:     &usecase.CdInteractor{Worktrees: wtClient},
+		Cd:     &usecase.CdInteractor{Worktrees: wtClient, Launcher: sessionLauncher},
 		Select: tui.SelectWorktree,
 	}
 

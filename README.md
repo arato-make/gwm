@@ -17,7 +17,8 @@
   - 登録済みのエントリを削除します。見つからない場合はエラーになります。
 
 - `gwm cd`
-  - `git worktree list --porcelain` の結果を元に一覧を表示し、番号入力で移動先を選択します（現在の worktree には `*` マーク）。選択後は対象 worktree に `cd` したシェルを起動します。
+  - `git worktree list --porcelain` の結果を元に一覧を Bubble Tea UI で表示し、矢印キーまたは数字入力で選択します（現在の worktree には `*` マーク）。
+  - 選択後は tmux セッション `gwm-<branch>` に attach（存在しない場合はカレントを `<branch>` で新規作成）。tmux が無い環境では従来どおりシェルを起動します。
 
 ## ビルド方法
 

@@ -1,41 +1,108 @@
 package tui
 
 import (
-	"bufio"
 	"fmt"
-	"os"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/bubbles/list"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/example/gwm/internal/domain"
 )
 
-// SelectWorktree shows a simple numeric menu and returns chosen path.
-func SelectWorktree(list []domain.WorktreeInfo) (string, error) {
-	if len(list) == 0 {
-		return "", fmt.Errorf("no worktrees found")
+// SelectWorktree shows a Bubble Tea list UI and returns the chosen worktree.
+func SelectWorktree(wts []domain.WorktreeInfo) (domain.WorktreeInfo, error) {
+	if len(wts) == 0 {
+		return domain.WorktreeInfo{}, fmt.Errorf("no worktrees found")
 	}
-	fmt.Println("Select worktree:")
-	for i, wt := range list {
-		current := ""
-		if wt.IsCurrent {
-			current = " *"
-		}
-		fmt.Printf(" [%d] %s (%s)%s\n", i, wt.Path, wt.Branch, current)
+	items := make([]list.Item, len(wts))
+	for i, wt := range wts {
+		items[i] = worktreeItem{info: wt}
 	}
-	fmt.Print("Enter number: ")
-	reader := bufio.NewReader(os.Stdin)
-	line, err := reader.ReadString('\n')
+
+	styles := list.NewDefaultDelegate()
+	styles.ShowDescription = false
+	styles.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
+	styles.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
+
+	l := list.New(items, styles, 0, 0)
+	l.Title = "Select worktree (Enter to attach, q/Esc to cancel, digits to jump)"
+	l.SetShowHelp(false)
+	l.SetShowFilter(false)
+	l.SetShowStatusBar(false)
+	l.DisableQuitKeybindings() // handle quit keys ourselves
+
+	m := model{list: l}
+	p := tea.NewProgram(m)
+	res, err := p.Run()
 	if err != nil {
-		return "", err
+		return domain.WorktreeInfo{}, err
 	}
-	line = strings.TrimSpace(line)
-	if line == "" {
-		return "", fmt.Errorf("selection cancelled")
+	final := res.(model)
+	if final.cancelled || final.selected == nil {
+		return domain.WorktreeInfo{}, fmt.Errorf("selection cancelled")
 	}
-	idx, err := strconv.Atoi(line)
-	if err != nil || idx < 0 || idx >= len(list) {
-		return "", fmt.Errorf("invalid selection")
+	return *final.selected, nil
+}
+
+type model struct {
+	list      list.Model
+	selected  *domain.WorktreeInfo
+	cancelled bool
+}
+
+func (m model) Init() tea.Cmd { return nil }
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c", "q", "esc":
+			m.cancelled = true
+			return m, tea.Quit
+		case "enter":
+			if item, ok := m.list.SelectedItem().(worktreeItem); ok {
+				m.selected = &item.info
+				return m, tea.Quit
+			}
+		default:
+			if idx, err := parseDigit(msg.String()); err == nil {
+				if idx >= 0 && idx < len(m.list.Items()) {
+					m.list.Select(idx)
+				}
+			}
+		}
 	}
-	return list[idx].Path, nil
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return m.list.View()
+}
+
+type worktreeItem struct {
+	info domain.WorktreeInfo
+}
+
+func (i worktreeItem) Title() string {
+	current := ""
+	if i.info.IsCurrent {
+		current = " *"
+	}
+	return fmt.Sprintf("%s (%s)%s", i.info.Path, i.info.Branch, current)
+}
+
+func (i worktreeItem) Description() string { return "" }
+func (i worktreeItem) FilterValue() string { return i.info.Path }
+
+func parseDigit(s string) (int, error) {
+	s = strings.TrimSpace(s)
+	if len(s) != 1 {
+		return 0, fmt.Errorf("not single digit")
+	}
+	return strconv.Atoi(s)
 }
