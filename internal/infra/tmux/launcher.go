@@ -125,7 +125,7 @@ func sessionNameCandidates(wt domain.WorktreeInfo) []string {
 	trimmedBranch := sanitizeSessionName(strings.TrimPrefix(wt.Branch, "refs/heads/"))
 	base := sanitizeSessionName(filepath.Base(wt.Path))
 
-	primary := firstNonEmpty([]string{branch, trimmedBranch, base})
+	primary := firstNonEmpty([]string{trimmedBranch, branch, base})
 	var candidates []string
 	if primary != "" {
 		candidates = append(candidates, "gwm-"+primary)

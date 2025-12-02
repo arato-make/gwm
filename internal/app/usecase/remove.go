@@ -32,6 +32,12 @@ func (u *RemoveInteractor) Execute(in RemoveInput) (RemoveOutput, error) {
 		return out, errors.New("branch is required")
 	}
 
+	// セッション終了用に削除対象の worktree 情報を先に拾っておく。
+	var target *domain.WorktreeInfo
+	if list, err := u.Worktrees.ListWorktrees(); err == nil {
+		target = findWorktree(list, in.Branch)
+	}
+
 	path, err := u.Worktrees.RemoveWorktree(in.Branch, in.Force)
 	if err != nil {
 		return out, err
@@ -40,6 +46,9 @@ func (u *RemoveInteractor) Execute(in RemoveInput) (RemoveOutput, error) {
 
 	if u.Launcher != nil {
 		wt := domain.WorktreeInfo{Branch: in.Branch, Path: path}
+		if target != nil {
+			wt = *target
+		}
 		if err := u.Launcher.Kill(wt); err != nil {
 			return out, err
 		}
@@ -47,4 +56,20 @@ func (u *RemoveInteractor) Execute(in RemoveInput) (RemoveOutput, error) {
 	}
 
 	return out, nil
+}
+
+func findWorktree(list []domain.WorktreeInfo, branch string) *domain.WorktreeInfo {
+	normalized := branch
+	if !strings.HasPrefix(branch, "refs/heads/") {
+		normalized = "refs/heads/" + branch
+	}
+
+	for i := range list {
+		b := list[i].Branch
+		if b == branch || b == normalized || strings.TrimPrefix(b, "refs/heads/") == branch {
+			copy := list[i]
+			return &copy
+		}
+	}
+	return nil
 }
