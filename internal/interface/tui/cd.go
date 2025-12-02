@@ -74,6 +74,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 		}
+	case tea.WindowSizeMsg:
+		// Bubble Teaが端末サイズを送ってきたときにリストの表示幅・高さを更新する。
+		// 幅が0のままだとデリゲートが何も描画しないため、文字が見えなくなる。
+		m.list.SetSize(msg.Width, msg.Height)
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
