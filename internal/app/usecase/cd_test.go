@@ -17,6 +17,8 @@ func (m *mockLauncher) Launch(domain.WorktreeInfo) error {
 	return m.err
 }
 
+func (m *mockLauncher) Kill(domain.WorktreeInfo) error { return nil }
+
 func TestCdInteractorLaunch(t *testing.T) {
 	wt := domain.WorktreeInfo{Path: "/tmp", Branch: "feature/foo"}
 

@@ -8,15 +8,16 @@ import (
 
 func TestConfigEntryValidate(t *testing.T) {
 	tests := []struct {
-		name string
-		e    ConfigEntry
+		name    string
+		e       ConfigEntry
 		wantErr bool
 	}{
-		{"ok copy", ConfigEntry{Path: "file.txt", Mode: ModeCopy}, false},
-		{"ok symlink", ConfigEntry{Path: "dir/file", Mode: ModeSymlink}, false},
-		{"empty path", ConfigEntry{Path: "", Mode: ModeCopy}, true},
-		{"abs path", ConfigEntry{Path: "/abs", Mode: ModeCopy}, true},
-		{"bad mode", ConfigEntry{Path: "x", Mode: Mode("bad")}, true},
+		{"ok copy", ConfigEntry{Path: "file.txt", Mode: ModeCopy, Type: EntryTypeFile}, false},
+		{"ok symlink dir", ConfigEntry{Path: "dir", Mode: ModeSymlink, Type: EntryTypeDir}, false},
+		{"empty path", ConfigEntry{Path: "", Mode: ModeCopy, Type: EntryTypeFile}, true},
+		{"abs path", ConfigEntry{Path: "/abs", Mode: ModeCopy, Type: EntryTypeFile}, true},
+		{"bad mode", ConfigEntry{Path: "x", Mode: Mode("bad"), Type: EntryTypeFile}, true},
+		{"bad type", ConfigEntry{Path: "x", Mode: ModeCopy, Type: EntryType("bad")}, true},
 	}
 	for _, tt := range tests {
 		err := tt.e.Validate()
@@ -31,8 +32,11 @@ func TestConfigEntryValidate(t *testing.T) {
 
 func TestConfigServiceAddAndRemove(t *testing.T) {
 	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "a.txt"), []byte(""), 0o644); err != nil {
+		t.Fatalf("prepare file: %v", err)
+	}
 	repo := &inMemoryRepo{}
-	svc := NewConfigService(repo)
+	svc := NewConfigService(repo, tmp)
 
 	if err := svc.Add(ConfigEntry{Path: "a.txt", Mode: ModeCopy}); err != nil {
 		t.Fatalf("add err: %v", err)
@@ -49,8 +53,6 @@ func TestConfigServiceAddAndRemove(t *testing.T) {
 	if len(repo.data) != 0 {
 		t.Fatalf("expected empty repo after remove")
 	}
-
-	_ = os.WriteFile(filepath.Join(tmp, "dummy"), []byte(""), 0o644)
 }
 
 type inMemoryRepo struct {

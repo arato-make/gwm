@@ -92,3 +92,40 @@ func (c *WorktreeClient) ListWorktrees() ([]domain.WorktreeInfo, error) {
 	}
 	return list, sc.Err()
 }
+
+func (c *WorktreeClient) RemoveWorktree(branch string, force bool) (string, error) {
+	list, err := c.ListWorktrees()
+	if err != nil {
+		return "", err
+	}
+
+	normalized := branch
+	if !strings.HasPrefix(branch, "refs/heads/") {
+		normalized = "refs/heads/" + branch
+	}
+
+	var target *domain.WorktreeInfo
+	for i := range list {
+		if list[i].Branch == branch || list[i].Branch == normalized || strings.TrimPrefix(list[i].Branch, "refs/heads/") == branch {
+			copy := list[i]
+			target = &copy
+			break
+		}
+	}
+	if target == nil {
+		return "", fmt.Errorf("worktree not found for branch %s", branch)
+	}
+
+	args := []string{"-C", c.repoDir, "worktree", "remove"}
+	if force {
+		args = append(args, "--force")
+	}
+	args = append(args, target.Path)
+
+	cmd := exec.Command("git", args...)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return "", fmt.Errorf("git worktree remove failed: %w (%s)", err, string(out))
+	}
+
+	return target.Path, nil
+}

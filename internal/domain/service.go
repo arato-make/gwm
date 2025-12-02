@@ -1,6 +1,11 @@
 package domain
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+	"os"
+	"path/filepath"
+)
 
 // ConfigRepository persists config entries.
 type ConfigRepository interface {
@@ -14,6 +19,7 @@ type WorktreeService interface {
 	CreateBranch(branch string) error
 	AddWorktree(branch string) (string, error)
 	ListWorktrees() ([]WorktreeInfo, error)
+	RemoveWorktree(branch string, force bool) (string, error)
 }
 
 // FileOperator deploys files into a worktree.
@@ -24,26 +30,39 @@ type FileOperator interface {
 // SessionLauncher launches or attaches to a session (tmuxなど) rooted at the worktree.
 type SessionLauncher interface {
 	Launch(worktree WorktreeInfo) error
+	Kill(worktree WorktreeInfo) error
 }
 
 // ConfigService offers add/list/remove operations on config entries.
 type ConfigService struct {
-	repo ConfigRepository
+	repo    ConfigRepository
+	repoDir string
 }
 
-func NewConfigService(repo ConfigRepository) *ConfigService {
-	return &ConfigService{repo: repo}
+func NewConfigService(repo ConfigRepository, repoDir string) *ConfigService {
+	return &ConfigService{repo: repo, repoDir: repoDir}
 }
 
 func (s *ConfigService) List() ([]ConfigEntry, error) {
-	return s.repo.Load()
+	entries, err := s.repo.Load()
+	if err != nil {
+		return nil, err
+	}
+	return s.populateMissingTypes(entries)
 }
 
 func (s *ConfigService) Add(entry ConfigEntry) error {
+	if err := s.assignType(&entry); err != nil {
+		return err
+	}
 	if err := entry.Validate(); err != nil {
 		return err
 	}
 	entries, err := s.repo.Load()
+	if err != nil {
+		return err
+	}
+	entries, err = s.populateMissingTypes(entries)
 	if err != nil {
 		return err
 	}
@@ -61,6 +80,10 @@ func (s *ConfigService) Remove(path string) error {
 	if err != nil {
 		return err
 	}
+	entries, err = s.populateMissingTypes(entries)
+	if err != nil {
+		return err
+	}
 	kept := entries[:0]
 	found := false
 	for _, e := range entries {
@@ -74,4 +97,37 @@ func (s *ConfigService) Remove(path string) error {
 		return errors.New("entry not found")
 	}
 	return s.repo.Save(kept)
+}
+
+func (s *ConfigService) assignType(entry *ConfigEntry) error {
+	info, err := os.Stat(filepath.Join(s.repoDir, entry.Path))
+	if err != nil {
+		return err
+	}
+	actual := EntryTypeFile
+	if info.IsDir() {
+		actual = EntryTypeDir
+	}
+	if entry.Type == "" {
+		entry.Type = actual
+		return nil
+	}
+	if entry.Type != actual {
+		return fmt.Errorf("type mismatch: %s is %s", entry.Path, actual)
+	}
+	return nil
+}
+
+func (s *ConfigService) populateMissingTypes(entries []ConfigEntry) ([]ConfigEntry, error) {
+	for i := range entries {
+		if entries[i].Type == "" {
+			if err := s.assignType(&entries[i]); err != nil {
+				return nil, err
+			}
+		}
+		if err := entries[i].Validate(); err != nil {
+			return nil, err
+		}
+	}
+	return entries, nil
 }

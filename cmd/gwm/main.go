@@ -22,7 +22,7 @@ func main() {
 	}
 
 	cfgRepo := config.NewStore(repoDir)
-	configSvc := domain.NewConfigService(cfgRepo)
+	configSvc := domain.NewConfigService(cfgRepo, repoDir)
 	wtClient := git.NewWorktreeClient(repoDir)
 	fileOps := fs.NewOperator(repoDir)
 	sessionLauncher := tmuxinfra.NewLauncher()
@@ -36,6 +36,7 @@ func main() {
 		},
 		Config: &usecase.ConfigInteractor{Service: configSvc},
 		Cd:     &usecase.CdInteractor{Worktrees: wtClient, Launcher: sessionLauncher},
+		Remove: &usecase.RemoveInteractor{Worktrees: wtClient, Launcher: sessionLauncher},
 		Select: tui.SelectWorktree,
 	}
 

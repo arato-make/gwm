@@ -20,6 +20,10 @@
   - `git worktree list --porcelain` の結果を元に一覧を Bubble Tea UI で表示し、矢印キーまたは数字入力で選択します（現在の worktree には `*` マーク）。
   - 選択後は tmux セッション `gwm-<branch>` に attach（存在しない場合はカレントを `<branch>` で新規作成）。tmux が無い環境では従来どおりシェルを起動します。
 
+- `gwm remove <branch> [--force]`
+  - `git worktree remove` で `worktrees/<branch>` を削除します。`--force` を付けると未コミットの変更があっても削除します。
+  - 対応する tmux セッションがあれば終了させます（存在しない場合は何もしません）。
+
 ## ビルド方法
 
 1. Go 1.25 系を用意します（`go version` で確認）。

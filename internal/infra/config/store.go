@@ -11,12 +11,13 @@ import (
 
 // Store persists configuration as JSON on local filesystem.
 type Store struct {
-	path string
+	path    string
+	repoDir string
 }
 
 // NewStore creates a Store rooted at repoDir/.gwm/config.json.
 func NewStore(repoDir string) *Store {
-	return &Store{path: filepath.Join(repoDir, ".gwm", "config.json")}
+	return &Store{path: filepath.Join(repoDir, ".gwm", "config.json"), repoDir: repoDir}
 }
 
 func (s *Store) ensureDir() error {
@@ -39,6 +40,15 @@ func (s *Store) Load() ([]domain.ConfigEntry, error) {
 	if err := json.Unmarshal(data, &entries); err != nil {
 		return nil, err
 	}
+	for i := range entries {
+		if entries[i].Type == "" {
+			typ, err := detectEntryType(s.repoDir, entries[i].Path)
+			if err != nil {
+				return nil, err
+			}
+			entries[i].Type = typ
+		}
+	}
 	return entries, nil
 }
 
@@ -56,4 +66,15 @@ func (s *Store) Save(entries []domain.ConfigEntry) error {
 		return err
 	}
 	return os.Rename(tmp, s.path)
+}
+
+func detectEntryType(repoDir, relPath string) (domain.EntryType, error) {
+	info, err := os.Stat(filepath.Join(repoDir, relPath))
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return domain.EntryTypeDir, nil
+	}
+	return domain.EntryTypeFile, nil
 }

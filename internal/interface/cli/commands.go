@@ -16,6 +16,7 @@ type App struct {
 	Create *usecase.CreateInteractor
 	Config *usecase.ConfigInteractor
 	Cd     *usecase.CdInteractor
+	Remove *usecase.RemoveInteractor
 	Select func([]domain.WorktreeInfo) (domain.WorktreeInfo, error)
 }
 
@@ -31,6 +32,8 @@ func (a *App) Run(args []string) int {
 		return a.runConfig(args[1:])
 	case "cd":
 		return a.runCd(args[1:])
+	case "remove":
+		return a.runRemove(args[1:])
 	default:
 		fmt.Println("unknown command:", args[0])
 		return 1
@@ -154,6 +157,35 @@ func (a *App) runCd(args []string) int {
 	return 0
 }
 
+func (a *App) runRemove(args []string) int {
+	fs := flag.NewFlagSet("remove", flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	force := fs.Bool("force", false, "force removal even if dirty")
+	if err := fs.Parse(reorderRemoveArgs(args)); err != nil {
+		return 1
+	}
+	if fs.NArg() != 1 {
+		fmt.Println("usage: gwm remove <branch> [--force]")
+		return 1
+	}
+
+	if a.Remove == nil {
+		fmt.Println("error: remove usecase not configured")
+		return 1
+	}
+
+	in := usecase.RemoveInput{Branch: fs.Arg(0), Force: *force}
+	out, err := a.Remove.Execute(in)
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+	for _, m := range out.Messages {
+		fmt.Println(m)
+	}
+	return 0
+}
+
 // respondForCd prints JSON to stdout so wrapper can use it; if empty, error.
 func respondForCd(list []domain.WorktreeInfo) int {
 	if len(list) == 0 {
@@ -174,6 +206,16 @@ var ErrCancel = errors.New("cancelled")
 // reorderConfigAddArgs allows "gwm config add <path> --mode ..." by moving the
 // first positional argument to the end so that flag parsing still works.
 func reorderConfigAddArgs(args []string) []string {
+	if len(args) == 0 {
+		return args
+	}
+	if !strings.HasPrefix(args[0], "-") {
+		return append(args[1:], args[0])
+	}
+	return args
+}
+
+func reorderRemoveArgs(args []string) []string {
 	if len(args) == 0 {
 		return args
 	}

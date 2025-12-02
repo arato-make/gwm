@@ -22,8 +22,8 @@ func TestStoreLoadSave(t *testing.T) {
 	}
 
 	want := []domain.ConfigEntry{
-		{Path: "a.txt", Mode: domain.ModeCopy},
-		{Path: "b.txt", Mode: domain.ModeSymlink},
+		{Path: "a.txt", Mode: domain.ModeCopy, Type: domain.EntryTypeFile},
+		{Path: "b.txt", Mode: domain.ModeSymlink, Type: domain.EntryTypeFile},
 	}
 	if err := s.Save(want); err != nil {
 		t.Fatalf("save err: %v", err)
@@ -49,5 +49,21 @@ func TestStoreLoadSave(t *testing.T) {
 	}
 	if _, err := s.Load(); err == nil {
 		t.Fatalf("expected error for bad json")
+	}
+
+	// type should be auto-detected when missing
+	if err := os.WriteFile(filepath.Join(dir, "c.txt"), []byte(""), 0o644); err != nil {
+		t.Fatalf("prepare file: %v", err)
+	}
+	omitType := []domain.ConfigEntry{{Path: "c.txt", Mode: domain.ModeCopy}}
+	if err := s.Save(omitType); err != nil {
+		t.Fatalf("save err: %v", err)
+	}
+	loaded, err := s.Load()
+	if err != nil {
+		t.Fatalf("load err: %v", err)
+	}
+	if len(loaded) != 1 || loaded[0].Type != domain.EntryTypeFile {
+		t.Fatalf("type not inferred: %+v", loaded)
 	}
 }
