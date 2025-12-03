@@ -1,0 +1,79 @@
+name: Manual Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'リリースするバージョン（例: v1.2.3）'
+        required: false
+        type: string
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+
+      - name: バージョン決定
+        id: version
+        shell: bash
+        run: |
+          input="${{ github.event.inputs.version }}"
+
+          if [ -n "$input" ]; then
+            echo "version=$input" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          last_tag=$(git tag --list | sort -V | tail -n 1)
+
+          if [ -z "$last_tag" ]; then
+            # タグが無い場合は初回リリースとして v0.1.0 を採用
+            echo "version=v0.1.0" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # 先頭の 'v' を残すかどうか判定
+          prefix=""
+          case "$last_tag" in
+            v*) prefix="v"; last_tag="${last_tag#v}" ;;
+          esac
+
+          IFS='.' read -r major minor patch <<< "$last_tag"
+          patch=$((patch + 1))
+          echo "version=${prefix}${major}.${minor}.${patch}" >> "$GITHUB_OUTPUT"
+
+      - name: Build tarball (darwin/amd64)
+        run: |
+          set -e
+          mkdir -p dist
+          go mod download
+
+          version='${{ steps.version.outputs.version }}'
+          for arch in amd64 arm64; do
+            export GOOS=darwin GOARCH="$arch"
+            go build -o dist/gwm ./cmd/gwm
+            archive="gwt_${version}_darwin_${arch}.tar.gz"
+            tar -C dist -czf "dist/${archive}" gwm
+            rm dist/gwm
+          done
+
+      - name: リリース作成
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: ${{ steps.version.outputs.version }}
+          generate_release_notes: true
+          files: |
+            dist/gwt_${{ steps.version.outputs.version }}_darwin_amd64.tar.gz
+            dist/gwt_${{ steps.version.outputs.version }}_darwin_arm64.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
