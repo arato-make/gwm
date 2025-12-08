@@ -32,21 +32,26 @@ func (c *WorktreeClient) BranchExists(branch string) (bool, error) {
 	return false, err
 }
 
-func (c *WorktreeClient) defaultBranch() string {
-	cmd := exec.Command("git", "-C", c.repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
-	out, err := cmd.Output()
-	if err != nil {
-		// fallback
-		return "main"
-	}
-	parts := strings.Split(strings.TrimSpace(string(out)), "/")
-	return parts[len(parts)-1]
-}
-
 func (c *WorktreeClient) CreateBranch(branch string) error {
-	base := c.defaultBranch()
+	base, err := c.currentBranch()
+	if err != nil {
+		return err
+	}
 	cmd := exec.Command("git", "-C", c.repoDir, "branch", branch, base)
 	return cmd.Run()
+}
+
+func (c *WorktreeClient) currentBranch() (string, error) {
+	cmd := exec.Command("git", "-C", c.repoDir, "rev-parse", "--abbrev-ref", "HEAD")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	branch := strings.TrimSpace(string(out))
+	if branch == "HEAD" {
+		return "", fmt.Errorf("detached HEAD; current branch is unknown")
+	}
+	return branch, nil
 }
 
 func (c *WorktreeClient) AddWorktree(branch string) (string, error) {
