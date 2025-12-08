@@ -26,7 +26,7 @@ mkdir -p "$STAGE_DIR"
 
 # ビルド（静的リンク、再現性のため CGO 無効）
 CGO_ENABLED=0 GOOS="$GOOS_CURRENT" GOARCH="$GOARCH_CURRENT" \
-  go build -o "$STAGE_DIR/$BIN_NAME" "$ROOT_DIR/cmd/gwm"
+  go build -o "$STAGE_DIR/$BIN_NAME" "$ROOT_DIR"
 
 # 同梱ファイル
 cp "$ROOT_DIR/README.md" "$STAGE_DIR/"

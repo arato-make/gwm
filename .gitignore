@@ -3,3 +3,5 @@
 AGENTS.md
 gwm
 .gwm/*
+# Added by goreleaser init:
+dist/

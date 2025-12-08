@@ -27,13 +27,13 @@
 ## ビルド方法
 
 1. Go 1.25 系を用意します（`go version` で確認）。
-2. ルートディレクトリで `go build -o gwm ./cmd/gwm` を実行します。
+2. ルートディレクトリで `go build -o gwm .` を実行します。
 3. 生成されたバイナリ `./gwm` を任意のパスに配置するか、実行ディレクトリでそのまま利用してください。
 
 ## 補足
 
 - 設定は `.gwm/config.json` に JSON で保存されます（存在しない場合は自動作成）。
-- 実行例: `go run ./cmd/gwm create feature/foo`、`go run ./cmd/gwm config add path/to/file --mode symlink`。
+- 実行例: `go run . create feature/foo`、`go run . config add path/to/file --mode symlink`。
 - tmux を iTerm2 の control mode で起動したい場合は `.gwm/setting.json` を作成し、例えば次のように設定します:
 
   ```json
