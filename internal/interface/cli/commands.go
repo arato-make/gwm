@@ -22,8 +22,12 @@ type App struct {
 
 func (a *App) Run(args []string) int {
 	if len(args) < 1 {
-		fmt.Println("usage: gwm <command>")
+		printRootUsage()
 		return 1
+	}
+	if isHelp(args[0]) {
+		printRootUsage()
+		return 0
 	}
 	switch args[0] {
 	case "create":
@@ -36,6 +40,7 @@ func (a *App) Run(args []string) int {
 		return a.runRemove(args[1:])
 	default:
 		fmt.Println("unknown command:", args[0])
+		printRootUsage()
 		return 1
 	}
 }
@@ -44,6 +49,9 @@ func (a *App) runCreate(args []string) int {
 	fs := flag.NewFlagSet("create", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 	if fs.NArg() < 1 {
@@ -83,8 +91,12 @@ func (a *App) runConfig(args []string) int {
 
 func (a *App) runConfigAdd(args []string) int {
 	fs := flag.NewFlagSet("config add", flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
 	mode := fs.String("mode", "copy", "copy|symlink")
 	if err := fs.Parse(reorderConfigAddArgs(args)); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 	if fs.NArg() < 1 {
@@ -162,6 +174,9 @@ func (a *App) runRemove(args []string) int {
 	fs.SetOutput(os.Stdout)
 	force := fs.Bool("force", false, "force removal even if dirty")
 	if err := fs.Parse(reorderRemoveArgs(args)); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
 		return 1
 	}
 	if a.Remove == nil {
@@ -245,4 +260,20 @@ func reorderRemoveArgs(args []string) []string {
 		return append(args[1:], args[0])
 	}
 	return args
+}
+
+func isHelp(arg string) bool {
+	return arg == "-h" || arg == "--help"
+}
+
+func printRootUsage() {
+	fmt.Println("usage: gwm <command>")
+	fmt.Println()
+	fmt.Println("commands:")
+	fmt.Println("  create <branch>              create a worktree and expand config files")
+	fmt.Println("  config add <path> --mode ... manage tracked files (copy|symlink)")
+	fmt.Println("  config list                  list tracked files")
+	fmt.Println("  config remove <path>         untrack a file")
+	fmt.Println("  cd                           select and attach to a worktree")
+	fmt.Println("  remove <branch> [--force]    delete a worktree and optionally force")
 }

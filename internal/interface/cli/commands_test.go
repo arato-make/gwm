@@ -1,9 +1,12 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/example/gwm/internal/app/usecase"
@@ -99,4 +102,51 @@ func TestRunRemoveWithoutBranchUsesSelector(t *testing.T) {
 	if exit := app.runRemove(nil); exit != 0 {
 		t.Fatalf("runRemove returned %d", exit)
 	}
+}
+
+func TestRunHelpWithDashH(t *testing.T) {
+	app := &App{}
+
+	out := captureStdout(t, func() {
+		if code := app.Run([]string{"-h"}); code != 0 {
+			t.Fatalf("Run returned %d", code)
+		}
+	})
+
+	if !strings.Contains(out, "usage: gwm <command>") {
+		t.Fatalf("help missing usage, got %q", out)
+	}
+	if !strings.Contains(out, "create <branch>") {
+		t.Fatalf("help missing create command, got %q", out)
+	}
+}
+
+func TestRunCreateHelpReturnsZero(t *testing.T) {
+	app := &App{}
+	if code := app.runCreate([]string{"-h"}); code != 0 {
+		t.Fatalf("runCreate returned %d on -h", code)
+	}
+}
+
+func captureStdout(t *testing.T, f func()) string {
+	t.Helper()
+	old := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = w
+	f()
+	if err := w.Close(); err != nil {
+		t.Fatalf("close writer: %v", err)
+	}
+	os.Stdout = old
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, r); err != nil {
+		t.Fatalf("copy: %v", err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatalf("close reader: %v", err)
+	}
+	return buf.String()
 }
