@@ -17,6 +17,7 @@ func TestModelHandlesWindowSize(t *testing.T) {
 
 	delegate := list.NewDefaultDelegate()
 	delegate.ShowDescription = false
+	delegate.SetSpacing(0)
 	delegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
 	delegate.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
 
@@ -24,13 +25,15 @@ func TestModelHandlesWindowSize(t *testing.T) {
 	l.SetShowHelp(false)
 	l.SetShowFilter(false)
 	l.SetShowStatusBar(false)
+	l.SetShowTitle(false)
+	l.SetShowPagination(false)
 	l.DisableQuitKeybindings()
 
 	m := model{list: l}
 	mAny, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
 	m = mAny.(model)
 
-	if m.list.Width() != 40 || m.list.Height() != 10 {
+	if m.list.Width() != 40 || m.list.Height() != 1 {
 		t.Fatalf("list size not updated, got (%d, %d)", m.list.Width(), m.list.Height())
 	}
 

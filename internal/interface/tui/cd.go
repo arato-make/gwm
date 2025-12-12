@@ -24,14 +24,16 @@ func SelectWorktree(wts []domain.WorktreeInfo) (domain.WorktreeInfo, error) {
 
 	styles := list.NewDefaultDelegate()
 	styles.ShowDescription = false
+	styles.SetSpacing(0)
 	styles.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
 	styles.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
 
 	l := list.New(items, styles, 0, 0)
-	l.Title = "Select worktree (Enter to attach, q/Esc to cancel, digits to jump)"
+	l.SetShowTitle(false)
 	l.SetShowHelp(false)
 	l.SetShowFilter(false)
 	l.SetShowStatusBar(false)
+	l.SetShowPagination(false)
 	l.DisableQuitKeybindings() // handle quit keys ourselves
 
 	m := model{list: l}
@@ -75,9 +77,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.WindowSizeMsg:
-		// Bubble Teaが端末サイズを送ってきたときにリストの表示幅・高さを更新する。
-		// 幅が0のままだとデリゲートが何も描画しないため、文字が見えなくなる。
-		m.list.SetSize(msg.Width, msg.Height)
+		h := len(m.list.Items())
+		if h < 1 {
+			h = 1
+		}
+		if h > msg.Height {
+			h = msg.Height
+		}
+		m.list.SetSize(msg.Width, h)
 	}
 	var cmd tea.Cmd
 	m.list, cmd = m.list.Update(msg)
