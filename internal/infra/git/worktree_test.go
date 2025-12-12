@@ -20,7 +20,7 @@ func TestCreateBranchUsesCurrentBranch(t *testing.T) {
 	runGit(t, repoDir, "add", "README.md")
 	runGit(t, repoDir, "commit", "-m", "develop")
 
-	client := NewWorktreeClient(repoDir)
+	client := NewWorktreeClient(repoDir, repoDir)
 	if err := client.CreateBranch("feature/foo"); err != nil {
 		t.Fatalf("create branch: %v", err)
 	}
@@ -30,6 +30,51 @@ func TestCreateBranchUsesCurrentBranch(t *testing.T) {
 	if feature != develop {
 		t.Fatalf("feature branch is not based on current branch: feature=%s develop=%s", feature, develop)
 	}
+}
+
+func TestDetectMainWorktreeDirAndAddWorktreeFromLinkedWorktree(t *testing.T) {
+	repoDir := t.TempDir()
+
+	runGit(t, repoDir, "-c", "init.defaultBranch=main", "init")
+	writeFile(t, filepath.Join(repoDir, "README.md"), "root\n")
+	runGit(t, repoDir, "add", "README.md")
+	runGit(t, repoDir, "commit", "-m", "init")
+
+	runGit(t, repoDir, "branch", "test")
+	linkedDir := filepath.Join(repoDir, "worktrees", "test")
+	runGit(t, repoDir, "worktree", "add", linkedDir, "test")
+
+	mainDir, err := DetectMainWorktreeDir(linkedDir)
+	if err != nil {
+		t.Fatalf("detect main worktree dir: %v", err)
+	}
+	repoReal := canonicalize(t, repoDir)
+	mainReal := canonicalize(t, mainDir)
+	if filepath.Clean(mainReal) != filepath.Clean(repoReal) {
+		t.Fatalf("main dir mismatch: got=%s want=%s", mainReal, repoReal)
+	}
+
+	client := NewWorktreeClient(linkedDir, mainDir)
+	if err := client.CreateBranch("hoge"); err != nil {
+		t.Fatalf("create branch: %v", err)
+	}
+	path, err := client.AddWorktree("hoge")
+	if err != nil {
+		t.Fatalf("add worktree: %v", err)
+	}
+	want := filepath.Join(repoDir, "worktrees", "hoge")
+	if filepath.Clean(canonicalize(t, path)) != filepath.Clean(canonicalize(t, want)) {
+		t.Fatalf("worktree path mismatch: got=%s want=%s", path, want)
+	}
+}
+
+func canonicalize(t *testing.T, p string) string {
+	t.Helper()
+	cp, err := filepath.EvalSymlinks(p)
+	if err != nil {
+		return filepath.Clean(p)
+	}
+	return filepath.Clean(cp)
 }
 
 func runGit(t *testing.T, repoDir string, args ...string) {

@@ -22,6 +22,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	mainRepoDir, err := git.DetectMainWorktreeDir(repoDir)
+	if err != nil {
+		fmt.Println("error:", err)
+		os.Exit(1)
+	}
+
 	cfgRepo := config.NewStore(repoDir)
 	settings, err := setting.Load(repoDir)
 	if err != nil {
@@ -29,7 +35,7 @@ func main() {
 		os.Exit(1)
 	}
 	configSvc := domain.NewConfigService(cfgRepo, repoDir)
-	wtClient := git.NewWorktreeClient(repoDir)
+	wtClient := git.NewWorktreeClient(repoDir, mainRepoDir)
 	fileOps := fs.NewOperator(repoDir)
 	sessionLauncher := tmuxinfra.NewLauncher(settings)
 

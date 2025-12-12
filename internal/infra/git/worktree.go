@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -13,15 +14,16 @@ import (
 
 // WorktreeClient implements domain.WorktreeService using git CLI.
 type WorktreeClient struct {
-	repoDir string
+	gitDir          string
+	worktreeBaseDir string
 }
 
-func NewWorktreeClient(repoDir string) *WorktreeClient {
-	return &WorktreeClient{repoDir: repoDir}
+func NewWorktreeClient(gitDir, worktreeBaseDir string) *WorktreeClient {
+	return &WorktreeClient{gitDir: gitDir, worktreeBaseDir: worktreeBaseDir}
 }
 
 func (c *WorktreeClient) BranchExists(branch string) (bool, error) {
-	cmd := exec.Command("git", "-C", c.repoDir, "rev-parse", "--verify", "--quiet", branch)
+	cmd := exec.Command("git", "-C", c.gitDir, "rev-parse", "--verify", "--quiet", branch)
 	err := cmd.Run()
 	if err == nil {
 		return true, nil
@@ -37,12 +39,12 @@ func (c *WorktreeClient) CreateBranch(branch string) error {
 	if err != nil {
 		return err
 	}
-	cmd := exec.Command("git", "-C", c.repoDir, "branch", branch, base)
+	cmd := exec.Command("git", "-C", c.gitDir, "branch", branch, base)
 	return cmd.Run()
 }
 
 func (c *WorktreeClient) currentBranch() (string, error) {
-	cmd := exec.Command("git", "-C", c.repoDir, "rev-parse", "--abbrev-ref", "HEAD")
+	cmd := exec.Command("git", "-C", c.gitDir, "rev-parse", "--abbrev-ref", "HEAD")
 	out, err := cmd.Output()
 	if err != nil {
 		return "", err
@@ -55,11 +57,16 @@ func (c *WorktreeClient) currentBranch() (string, error) {
 }
 
 func (c *WorktreeClient) AddWorktree(branch string) (string, error) {
-	path := filepath.Join(c.repoDir, "worktrees", branch)
-	if err := exec.Command("mkdir", "-p", filepath.Dir(path)).Run(); err != nil {
+	baseDir := c.worktreeBaseDir
+	if baseDir == "" {
+		baseDir = c.gitDir
+	}
+
+	path := filepath.Join(baseDir, "worktrees", branch)
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
-	cmd := exec.Command("git", "-C", c.repoDir, "worktree", "add", path, branch)
+	cmd := exec.Command("git", "-C", c.gitDir, "worktree", "add", path, branch)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", fmt.Errorf("git worktree add failed: %w (%s)", err, string(out))
 	}
@@ -67,7 +74,7 @@ func (c *WorktreeClient) AddWorktree(branch string) (string, error) {
 }
 
 func (c *WorktreeClient) ListWorktrees() ([]domain.WorktreeInfo, error) {
-	cmd := exec.Command("git", "-C", c.repoDir, "worktree", "list", "--porcelain")
+	cmd := exec.Command("git", "-C", c.gitDir, "worktree", "list", "--porcelain")
 	out, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -121,7 +128,7 @@ func (c *WorktreeClient) RemoveWorktree(branch string, force bool) (string, erro
 		return "", fmt.Errorf("worktree not found for branch %s", branch)
 	}
 
-	args := []string{"-C", c.repoDir, "worktree", "remove"}
+	args := []string{"-C", c.gitDir, "worktree", "remove"}
 	if force {
 		args = append(args, "--force")
 	}
