@@ -104,6 +104,62 @@ func TestRunRemoveWithoutBranchUsesSelector(t *testing.T) {
 	}
 }
 
+type stubWorktreesList struct {
+	list   []domain.WorktreeInfo
+	branch string
+	force  bool
+}
+
+func (s *stubWorktreesList) BranchExists(string) (bool, error)  { return false, nil }
+func (s *stubWorktreesList) CreateBranch(string) error          { return nil }
+func (s *stubWorktreesList) AddWorktree(string) (string, error) { return "", nil }
+func (s *stubWorktreesList) ListWorktrees() ([]domain.WorktreeInfo, error) {
+	return append([]domain.WorktreeInfo{}, s.list...), nil
+}
+func (s *stubWorktreesList) RemoveWorktree(branch string, force bool) (string, error) {
+	s.branch = branch
+	s.force = force
+	return "/tmp/worktrees/" + branch, nil
+}
+
+func TestRunRemoveWithoutBranchFiltersMainWorktree(t *testing.T) {
+	mainDir := t.TempDir()
+	if err := os.Mkdir(filepath.Join(mainDir, ".git"), 0o755); err != nil {
+		t.Fatalf("prepare main .git dir: %v", err)
+	}
+	featureDir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(featureDir, ".git"), []byte("gitdir: /tmp/irrelevant\n"), 0o644); err != nil {
+		t.Fatalf("prepare worktree .git file: %v", err)
+	}
+
+	wt := &stubWorktreesList{
+		list: []domain.WorktreeInfo{
+			{Branch: "refs/heads/main", Path: mainDir},
+			{Branch: "refs/heads/feature/foo", Path: featureDir},
+		},
+	}
+	selector := func(list []domain.WorktreeInfo) (domain.WorktreeInfo, error) {
+		if len(list) != 1 {
+			t.Fatalf("list length = %d, want 1", len(list))
+		}
+		if list[0].Path == mainDir {
+			t.Fatalf("main worktree must be filtered out")
+		}
+		return list[0], nil
+	}
+	app := &App{
+		Remove: &usecase.RemoveInteractor{Worktrees: wt, Launcher: stubLauncher{}},
+		Select: selector,
+	}
+
+	if exit := app.runRemove(nil); exit != 0 {
+		t.Fatalf("runRemove returned %d", exit)
+	}
+	if wt.branch != "refs/heads/feature/foo" {
+		t.Fatalf("removed branch = %q, want %q", wt.branch, "refs/heads/feature/foo")
+	}
+}
+
 func TestRunHelpWithDashH(t *testing.T) {
 	app := &App{}
 

@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/example/gwm/internal/app/usecase"
@@ -193,6 +194,7 @@ func (a *App) runRemove(args []string) int {
 			fmt.Println("error:", err)
 			return 1
 		}
+		list = filterRemovableWorktrees(list)
 		if len(list) == 0 {
 			fmt.Println("error: no worktrees")
 			return 1
@@ -260,6 +262,27 @@ func reorderRemoveArgs(args []string) []string {
 		return append(args[1:], args[0])
 	}
 	return args
+}
+
+func filterRemovableWorktrees(list []domain.WorktreeInfo) []domain.WorktreeInfo {
+	out := make([]domain.WorktreeInfo, 0, len(list))
+	for _, wt := range list {
+		if isMainWorktreePath(wt.Path) {
+			continue
+		}
+		out = append(out, wt)
+	}
+	return out
+}
+
+// isMainWorktreePath returns true for the primary worktree (repo root) in typical git worktree setups.
+// The main worktree usually has ".git" as a directory, while linked worktrees have ".git" as a file.
+func isMainWorktreePath(worktreePath string) bool {
+	info, err := os.Stat(filepath.Join(worktreePath, ".git"))
+	if err != nil {
+		return false
+	}
+	return info.IsDir()
 }
 
 func isHelp(arg string) bool {
