@@ -26,7 +26,7 @@ func SelectWorktree(wts []domain.WorktreeInfo) (domain.WorktreeInfo, error) {
 	styles.ShowDescription = false
 	styles.SetSpacing(0)
 	styles.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
-	styles.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
+	styles.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "242"})
 
 	l := list.New(items, styles, 0, 0)
 	l.SetShowTitle(false)

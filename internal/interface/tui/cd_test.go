@@ -19,7 +19,7 @@ func TestModelHandlesWindowSize(t *testing.T) {
 	delegate.ShowDescription = false
 	delegate.SetSpacing(0)
 	delegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
-	delegate.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("250"))
+	delegate.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "242"})
 
 	l := list.New(items, delegate, 0, 0)
 	l.SetShowHelp(false)
