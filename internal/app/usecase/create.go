@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/example/gwm/internal/domain"
@@ -17,13 +18,17 @@ type CreateOutput struct {
 
 type CreateInteractor struct {
 	Worktrees domain.WorktreeService
-	Config    domain.ConfigRepository
+	Config    *domain.ConfigService
 	FileOps   domain.FileOperator
 	Launcher  domain.SessionLauncher
 }
 
 func (u *CreateInteractor) Execute(in CreateInput) (CreateOutput, error) {
 	var out CreateOutput
+
+	if u.Config == nil {
+		return out, errors.New("config service is required")
+	}
 
 	exists, err := u.Worktrees.BranchExists(in.Branch)
 	if err != nil {
@@ -43,7 +48,7 @@ func (u *CreateInteractor) Execute(in CreateInput) (CreateOutput, error) {
 	out.Worktree = path
 	out.Messages = append(out.Messages, "worktree added at "+path)
 
-	entries, err := u.Config.Load()
+	entries, err := u.Config.List()
 	if err != nil {
 		return out, err
 	}

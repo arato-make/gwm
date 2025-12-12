@@ -245,16 +245,14 @@ var ErrCancel = errors.New("cancelled")
 // reorderConfigAddArgs allows "gwm config add <path> --mode ..." by moving the
 // first positional argument to the end so that flag parsing still works.
 func reorderConfigAddArgs(args []string) []string {
-	if len(args) == 0 {
-		return args
-	}
-	if !strings.HasPrefix(args[0], "-") {
-		return append(args[1:], args[0])
-	}
-	return args
+	return moveFirstPositionalArgToEnd(args)
 }
 
 func reorderRemoveArgs(args []string) []string {
+	return moveFirstPositionalArgToEnd(args)
+}
+
+func moveFirstPositionalArgToEnd(args []string) []string {
 	if len(args) == 0 {
 		return args
 	}

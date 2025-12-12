@@ -20,13 +20,6 @@ func NewOperator(repoDir string) *Operator {
 // Deploy copies or symlinks files defined in entries into worktreePath.
 func (o *Operator) Deploy(entries []domain.ConfigEntry, worktreePath string) error {
 	for _, e := range entries {
-		if e.Type == "" {
-			typ, err := detectEntryType(o.repoDir, e.Path)
-			if err != nil {
-				return err
-			}
-			e.Type = typ
-		}
 		if err := e.Validate(); err != nil {
 			return err
 		}
@@ -113,15 +106,4 @@ func copyDir(src, dst string) error {
 		}
 	}
 	return nil
-}
-
-func detectEntryType(repoDir, relPath string) (domain.EntryType, error) {
-	info, err := os.Stat(filepath.Join(repoDir, relPath))
-	if err != nil {
-		return "", err
-	}
-	if info.IsDir() {
-		return domain.EntryTypeDir, nil
-	}
-	return domain.EntryTypeFile, nil
 }

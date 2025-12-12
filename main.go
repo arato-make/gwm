@@ -34,7 +34,8 @@ func main() {
 		fmt.Println("error:", err)
 		os.Exit(1)
 	}
-	configSvc := domain.NewConfigService(cfgRepo, repoDir)
+	entryTypes := fs.NewEntryTypeResolver(repoDir)
+	configSvc := domain.NewConfigService(cfgRepo, entryTypes)
 	wtClient := git.NewWorktreeClient(repoDir, mainRepoDir)
 	fileOps := fs.NewOperator(repoDir)
 	sessionLauncher := tmuxinfra.NewLauncher(settings)
@@ -42,7 +43,7 @@ func main() {
 	app := cli.App{
 		Create: &usecase.CreateInteractor{
 			Worktrees: wtClient,
-			Config:    cfgRepo,
+			Config:    configSvc,
 			FileOps:   fileOps,
 			Launcher:  sessionLauncher,
 		},

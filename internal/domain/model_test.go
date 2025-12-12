@@ -30,13 +30,36 @@ func TestConfigEntryValidate(t *testing.T) {
 	}
 }
 
+func TestConfigServiceListPopulatesMissingTypes(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.WriteFile(filepath.Join(tmp, "a.txt"), []byte(""), 0o644); err != nil {
+		t.Fatalf("prepare file: %v", err)
+	}
+
+	repo := &inMemoryRepo{
+		data: []ConfigEntry{{Path: "a.txt", Mode: ModeCopy}},
+	}
+	svc := NewConfigService(repo, osEntryTypeResolver{repoDir: tmp})
+
+	entries, err := svc.List()
+	if err != nil {
+		t.Fatalf("list err: %v", err)
+	}
+	if len(entries) != 1 {
+		t.Fatalf("expected 1 entry, got %d", len(entries))
+	}
+	if entries[0].Type != EntryTypeFile {
+		t.Fatalf("type = %s, want %s", entries[0].Type, EntryTypeFile)
+	}
+}
+
 func TestConfigServiceAddAndRemove(t *testing.T) {
 	tmp := t.TempDir()
 	if err := os.WriteFile(filepath.Join(tmp, "a.txt"), []byte(""), 0o644); err != nil {
 		t.Fatalf("prepare file: %v", err)
 	}
 	repo := &inMemoryRepo{}
-	svc := NewConfigService(repo, tmp)
+	svc := NewConfigService(repo, osEntryTypeResolver{repoDir: tmp})
 
 	if err := svc.Add(ConfigEntry{Path: "a.txt", Mode: ModeCopy}); err != nil {
 		t.Fatalf("add err: %v", err)
@@ -53,6 +76,21 @@ func TestConfigServiceAddAndRemove(t *testing.T) {
 	if len(repo.data) != 0 {
 		t.Fatalf("expected empty repo after remove")
 	}
+}
+
+type osEntryTypeResolver struct {
+	repoDir string
+}
+
+func (r osEntryTypeResolver) ResolveEntryType(relPath string) (EntryType, error) {
+	info, err := os.Stat(filepath.Join(r.repoDir, relPath))
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return EntryTypeDir, nil
+	}
+	return EntryTypeFile, nil
 }
 
 type inMemoryRepo struct {

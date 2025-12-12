@@ -3,14 +3,17 @@ package domain
 import (
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 )
 
 // ConfigRepository persists config entries.
 type ConfigRepository interface {
 	Load() ([]ConfigEntry, error)
 	Save([]ConfigEntry) error
+}
+
+// EntryTypeResolver resolves whether a repo-relative path is a file or directory.
+type EntryTypeResolver interface {
+	ResolveEntryType(relPath string) (EntryType, error)
 }
 
 // WorktreeService abstracts git worktree operations.
@@ -35,12 +38,12 @@ type SessionLauncher interface {
 
 // ConfigService offers add/list/remove operations on config entries.
 type ConfigService struct {
-	repo    ConfigRepository
-	repoDir string
+	repo  ConfigRepository
+	typer EntryTypeResolver
 }
 
-func NewConfigService(repo ConfigRepository, repoDir string) *ConfigService {
-	return &ConfigService{repo: repo, repoDir: repoDir}
+func NewConfigService(repo ConfigRepository, typer EntryTypeResolver) *ConfigService {
+	return &ConfigService{repo: repo, typer: typer}
 }
 
 func (s *ConfigService) List() ([]ConfigEntry, error) {
@@ -100,14 +103,15 @@ func (s *ConfigService) Remove(path string) error {
 }
 
 func (s *ConfigService) assignType(entry *ConfigEntry) error {
-	info, err := os.Stat(filepath.Join(s.repoDir, entry.Path))
+	if s.typer == nil {
+		return errors.New("entry type resolver is required")
+	}
+
+	actual, err := s.typer.ResolveEntryType(entry.Path)
 	if err != nil {
 		return err
 	}
-	actual := EntryTypeFile
-	if info.IsDir() {
-		actual = EntryTypeDir
-	}
+
 	if entry.Type == "" {
 		entry.Type = actual
 		return nil

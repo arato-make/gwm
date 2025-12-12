@@ -51,10 +51,7 @@ func TestStoreLoadSave(t *testing.T) {
 		t.Fatalf("expected error for bad json")
 	}
 
-	// type should be auto-detected when missing
-	if err := os.WriteFile(filepath.Join(dir, "c.txt"), []byte(""), 0o644); err != nil {
-		t.Fatalf("prepare file: %v", err)
-	}
+	// type is left empty when missing (domain service can populate it)
 	omitType := []domain.ConfigEntry{{Path: "c.txt", Mode: domain.ModeCopy}}
 	if err := s.Save(omitType); err != nil {
 		t.Fatalf("save err: %v", err)
@@ -63,7 +60,7 @@ func TestStoreLoadSave(t *testing.T) {
 	if err != nil {
 		t.Fatalf("load err: %v", err)
 	}
-	if len(loaded) != 1 || loaded[0].Type != domain.EntryTypeFile {
-		t.Fatalf("type not inferred: %+v", loaded)
+	if len(loaded) != 1 || loaded[0].Type != "" {
+		t.Fatalf("type should be empty: %+v", loaded)
 	}
 }

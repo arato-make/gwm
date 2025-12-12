@@ -57,7 +57,7 @@ func TestRunConfigAddAllowsModeAfterPath(t *testing.T) {
 		t.Fatalf("prepare file: %v", err)
 	}
 	repo := &memoryConfigRepo{}
-	svc := domain.NewConfigService(repo, dir)
+	svc := domain.NewConfigService(repo, osEntryTypeResolver{repoDir: dir})
 	app := &App{Config: &usecase.ConfigInteractor{Service: svc}}
 
 	exit := app.runConfigAdd([]string{"AGENTS.md", "--mode", "symlink"})
@@ -72,6 +72,21 @@ func TestRunConfigAddAllowsModeAfterPath(t *testing.T) {
 	if got[0].Mode != domain.ModeSymlink {
 		t.Fatalf("mode = %s, want %s", got[0].Mode, domain.ModeSymlink)
 	}
+}
+
+type osEntryTypeResolver struct {
+	repoDir string
+}
+
+func (r osEntryTypeResolver) ResolveEntryType(relPath string) (domain.EntryType, error) {
+	info, err := os.Stat(filepath.Join(r.repoDir, relPath))
+	if err != nil {
+		return "", err
+	}
+	if info.IsDir() {
+		return domain.EntryTypeDir, nil
+	}
+	return domain.EntryTypeFile, nil
 }
 
 func TestRunRemoveAcceptsBranchBeforeFlag(t *testing.T) {
