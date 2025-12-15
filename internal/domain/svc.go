@@ -21,6 +21,7 @@ type ServiceDefinition struct {
 	Command   string   `json:"command"`
 	Port      PortMode `json:"port,omitempty"`
 	FixedPort int      `json:"fixedPort,omitempty"`
+	Unique    bool     `json:"unique,omitempty"`
 }
 
 // Validate checks the integrity of ServiceDefinition.

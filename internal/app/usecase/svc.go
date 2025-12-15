@@ -13,6 +13,7 @@ type ServiceAddInput struct {
 	Command   string
 	PortMode  domain.PortMode
 	FixedPort int
+	Unique    bool
 }
 
 // ServiceAddInteractor adds a service definition.
@@ -26,6 +27,7 @@ func (u *ServiceAddInteractor) Execute(in ServiceAddInput) error {
 		Command:   in.Command,
 		Port:      in.PortMode,
 		FixedPort: in.FixedPort,
+		Unique:    in.Unique,
 	}
 	return u.Manager.Add(def)
 }
@@ -75,6 +77,24 @@ func (u *ServiceStartInteractor) Execute(in ServiceStartInput) (ServiceStartOutp
 			}
 			out.Messages = append(out.Messages,
 				fmt.Sprintf("stopped conflicting service %s on port %d", existing.Name, port))
+		}
+	}
+
+	// Handle unique service: stop same-name service running in other worktrees
+	if def.Unique {
+		inputWorktreeBase := filepath.Base(in.WorktreePath)
+		services, err := u.Runner.List()
+		if err != nil {
+			return out, err
+		}
+		for _, s := range services {
+			if s.Name == in.Name && s.WorktreePath != inputWorktreeBase {
+				if err := u.Runner.Stop(s.SessionName); err != nil {
+					return out, fmt.Errorf("failed to stop existing unique service: %w", err)
+				}
+				out.Messages = append(out.Messages,
+					fmt.Sprintf("stopped existing %s in worktree %s", s.Name, s.WorktreePath))
+			}
 		}
 	}
 

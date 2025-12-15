@@ -344,6 +344,7 @@ func (a *App) runServiceAdd(args []string) int {
 	fs.SetOutput(os.Stdout)
 	command := fs.String("command", "", "command to run")
 	port := fs.String("port", "auto", "auto|none|<number>")
+	unique := fs.Bool("unique", false, "only one instance across all worktrees")
 
 	if err := fs.Parse(reorderServiceAddArgs(args)); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -353,7 +354,7 @@ func (a *App) runServiceAdd(args []string) int {
 	}
 
 	if fs.NArg() < 1 || *command == "" {
-		fmt.Println("usage: gwm service add <name> --command \"...\" [--port auto|none|<number>]")
+		fmt.Println("usage: gwm service add <name> --command \"...\" [--port auto|none|<number>] [--unique]")
 		return 1
 	}
 
@@ -365,6 +366,7 @@ func (a *App) runServiceAdd(args []string) int {
 		Command:   *command,
 		PortMode:  portMode,
 		FixedPort: fixedPort,
+		Unique:    *unique,
 	}); err != nil {
 		fmt.Println("error:", err)
 		return 1
@@ -529,11 +531,11 @@ func printServiceUsage() {
 	fmt.Println("usage: gwm service <command>")
 	fmt.Println()
 	fmt.Println("commands:")
-	fmt.Println("  add <name> --command \"...\" [--port auto|none|<n>]  register service")
-	fmt.Println("  start <name>                                        start service")
-	fmt.Println("  stop <name>                                         stop service")
-	fmt.Println("  list                                                 list running services")
-	fmt.Println("  attach <name>                                        attach to service session")
-	fmt.Println("  remove <name>                                        remove service definition")
-	fmt.Println("  definitions                                          list service definitions")
+	fmt.Println("  add <name> --command \"...\" [--port auto|none|<n>] [--unique]  register service")
+	fmt.Println("  start <name>                                                    start service")
+	fmt.Println("  stop <name>                                                     stop service")
+	fmt.Println("  list                                                            list running services")
+	fmt.Println("  attach <name>                                                   attach to service session")
+	fmt.Println("  remove <name>                                                   remove service definition")
+	fmt.Println("  definitions                                                     list service definitions")
 }
