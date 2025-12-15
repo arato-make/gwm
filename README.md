@@ -25,13 +25,15 @@
   - 対応する tmux セッションがあれば終了させます（存在しない場合は何もしません）。
   - worktree で実行中のサービスも自動的に停止します。
 
-- `gwm service add <name> --command "..." [--port auto|none|<number>]`
+- `gwm service add <name> --command "..." [--port auto|none|<number>] [--unique]`
   - サービス定義を `.gwm/services.json` に登録します。
   - `--port auto`: 3000-3999 の範囲から未使用ポートを自動割り当て。
   - `--port none`: ポート管理なし。
   - `--port <number>`: 固定ポートを指定。
+  - `--unique`: 全 worktree で1インスタンスのみ実行。他の worktree で同名サービスが実行中の場合、停止して現在の worktree で起動し直します。
   - コマンド内で `{port}` プレースホルダーを使うと、実行時に実際のポート番号に置換されます。
     - 例: `gwm service add dev --command "yarn dev --port {port}" --port auto`
+    - 例: `gwm service add watcher --command "npm run watch" --port none --unique`
 
 - `gwm service start <name>`
   - 現在の worktree で登録済みサービスを起動します。
