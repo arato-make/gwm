@@ -15,26 +15,31 @@ func TestModelHandlesWindowSize(t *testing.T) {
 		worktreeItem{info: domain.WorktreeInfo{Path: "worktrees/feature", Branch: "feature/foo"}},
 	}
 
-	delegate := list.NewDefaultDelegate()
-	delegate.ShowDescription = false
-	delegate.SetSpacing(0)
-	delegate.Styles.SelectedTitle = lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true)
-	delegate.Styles.NormalTitle = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "242"})
+	m := &model{width: 80}
+	delegate := worktreeDelegate{
+		selectedStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("205")).Bold(true),
+		normalStyle:   lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "245", Dark: "242"}),
+		width:         &m.width,
+	}
 
 	l := list.New(items, delegate, 0, 0)
 	l.SetShowHelp(false)
 	l.SetShowFilter(false)
 	l.SetShowStatusBar(false)
 	l.SetShowTitle(false)
-	l.SetShowPagination(false)
+	l.SetShowPagination(true)
 	l.DisableQuitKeybindings()
 
-	m := model{list: l}
+	m.list = l
 	mAny, _ := m.Update(tea.WindowSizeMsg{Width: 40, Height: 10})
-	m = mAny.(model)
+	m = mAny.(*model)
 
-	if m.list.Width() != 40 || m.list.Height() != 1 {
+	if m.list.Width() != 40 || m.list.Height() != 3 {
 		t.Fatalf("list size not updated, got (%d, %d)", m.list.Width(), m.list.Height())
+	}
+
+	if m.width != 40 {
+		t.Fatalf("width not updated, got %d", m.width)
 	}
 
 	if view := m.View(); view == "" {
