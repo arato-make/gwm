@@ -21,8 +21,9 @@ type RemoveOutput struct {
 
 // RemoveInteractor deletes a git worktree and its related session (tmux など)。
 type RemoveInteractor struct {
-	Worktrees domain.WorktreeService
-	Launcher  domain.SessionLauncher
+	Worktrees     domain.WorktreeService
+	Launcher      domain.SessionLauncher
+	ServiceRunner domain.ServiceRunner
 }
 
 func (u *RemoveInteractor) Execute(in RemoveInput) (RemoveOutput, error) {
@@ -36,6 +37,13 @@ func (u *RemoveInteractor) Execute(in RemoveInput) (RemoveOutput, error) {
 	var target *domain.WorktreeInfo
 	if list, err := u.Worktrees.ListWorktrees(); err == nil {
 		target = findWorktree(list, in.Branch)
+	}
+
+	// Stop all services for this worktree before removal
+	if u.ServiceRunner != nil && target != nil {
+		if err := StopServicesForWorktree(u.ServiceRunner, target.Path); err == nil {
+			out.Messages = append(out.Messages, "services stopped")
+		}
 	}
 
 	path, err := u.Worktrees.RemoveWorktree(in.Branch, in.Force)

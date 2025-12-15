@@ -23,6 +23,35 @@
 - `gwm remove <branch> [--force]`
   - `git worktree remove` で `worktrees/<branch>` を削除します。`--force` を付けると未コミットの変更があっても削除します。
   - 対応する tmux セッションがあれば終了させます（存在しない場合は何もしません）。
+  - worktree で実行中のサービスも自動的に停止します。
+
+- `gwm service add <name> --command "..." [--port auto|none|<number>]`
+  - サービス定義を `.gwm/services.json` に登録します。
+  - `--port auto`: 3000-3999 の範囲から未使用ポートを自動割り当て。
+  - `--port none`: ポート管理なし。
+  - `--port <number>`: 固定ポートを指定。
+  - コマンド内で `{port}` プレースホルダーを使うと、実行時に実際のポート番号に置換されます。
+    - 例: `gwm service add dev --command "yarn dev --port {port}" --port auto`
+
+- `gwm service start <name>`
+  - 現在の worktree で登録済みサービスを起動します。
+  - 専用の tmux セッション `gwm-svc-<worktree>-<name>-p<port>` で実行されます。
+  - 固定ポートが他の worktree で使用中の場合、そのサービスを停止して新しく起動します。
+
+- `gwm service stop <name>`
+  - 現在の worktree で実行中のサービスを停止します。
+
+- `gwm service list`
+  - 全 worktree で実行中のサービス一覧を JSON で表示します。
+
+- `gwm service attach <name>`
+  - サービスの tmux セッションに attach してログを確認できます。
+
+- `gwm service definitions`
+  - 登録済みのサービス定義一覧を JSON で表示します。
+
+- `gwm service remove <name>`
+  - サービス定義を削除します。
 
 ## ビルド方法
 
@@ -33,6 +62,7 @@
 ## 補足
 
 - 設定は `.gwm/config.json` に JSON で保存されます（存在しない場合は自動作成）。
+- サービス定義は `.gwm/services.json` に JSON で保存されます。
 - 実行例: `go run . create feature/foo`、`go run . config add path/to/file --mode symlink`。
 - tmux を iTerm2 の control mode で起動したい場合は `.gwm/setting.json` を作成し、例えば次のように設定します:
 

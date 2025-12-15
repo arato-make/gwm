@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/example/gwm/internal/app/usecase"
@@ -19,6 +20,15 @@ type App struct {
 	Cd     *usecase.CdInteractor
 	Remove *usecase.RemoveInteractor
 	Select func([]domain.WorktreeInfo) (domain.WorktreeInfo, error)
+
+	// Service management
+	ServiceAdd            *usecase.ServiceAddInteractor
+	ServiceStart          *usecase.ServiceStartInteractor
+	ServiceStop           *usecase.ServiceStopInteractor
+	ServiceList           *usecase.ServiceListInteractor
+	ServiceAttach         *usecase.ServiceAttachInteractor
+	ServiceRemove         *usecase.ServiceRemoveInteractor
+	ServiceDefinitionList *usecase.ServiceDefinitionListInteractor
 }
 
 func (a *App) Run(args []string) int {
@@ -39,6 +49,8 @@ func (a *App) Run(args []string) int {
 		return a.runCd(args[1:])
 	case "remove":
 		return a.runRemove(args[1:])
+	case "service":
+		return a.runService(args[1:])
 	default:
 		fmt.Println("unknown command:", args[0])
 		printRootUsage()
@@ -297,4 +309,231 @@ func printRootUsage() {
 	fmt.Println("  config remove <path>         untrack a file")
 	fmt.Println("  cd                           select and attach to a worktree")
 	fmt.Println("  remove <branch> [--force]    delete a worktree and optionally force")
+	fmt.Println("  service <subcommand>         manage per-worktree services")
+}
+
+func (a *App) runService(args []string) int {
+	if len(args) == 0 {
+		printServiceUsage()
+		return 1
+	}
+	switch args[0] {
+	case "add":
+		return a.runServiceAdd(args[1:])
+	case "start":
+		return a.runServiceStart(args[1:])
+	case "stop":
+		return a.runServiceStop(args[1:])
+	case "list":
+		return a.runServiceList(args[1:])
+	case "attach":
+		return a.runServiceAttach(args[1:])
+	case "remove":
+		return a.runServiceRemove(args[1:])
+	case "definitions":
+		return a.runServiceDefinitions(args[1:])
+	default:
+		fmt.Println("unknown service command:", args[0])
+		printServiceUsage()
+		return 1
+	}
+}
+
+func (a *App) runServiceAdd(args []string) int {
+	fs := flag.NewFlagSet("service add", flag.ContinueOnError)
+	fs.SetOutput(os.Stdout)
+	command := fs.String("command", "", "command to run")
+	port := fs.String("port", "auto", "auto|none|<number>")
+
+	if err := fs.Parse(reorderServiceAddArgs(args)); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			return 0
+		}
+		return 1
+	}
+
+	if fs.NArg() < 1 || *command == "" {
+		fmt.Println("usage: gwm service add <name> --command \"...\" [--port auto|none|<number>]")
+		return 1
+	}
+
+	name := fs.Arg(0)
+	portMode, fixedPort := parsePort(*port)
+
+	if err := a.ServiceAdd.Execute(usecase.ServiceAddInput{
+		Name:      name,
+		Command:   *command,
+		PortMode:  portMode,
+		FixedPort: fixedPort,
+	}); err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	fmt.Println("added service:", name)
+	return 0
+}
+
+func (a *App) runServiceStart(args []string) int {
+	if len(args) < 1 {
+		fmt.Println("usage: gwm service start <name>")
+		return 1
+	}
+
+	name := args[0]
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	out, err := a.ServiceStart.Execute(usecase.ServiceStartInput{
+		Name:         name,
+		WorktreePath: cwd,
+	})
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	for _, m := range out.Messages {
+		fmt.Println(m)
+	}
+	return 0
+}
+
+func (a *App) runServiceStop(args []string) int {
+	if len(args) < 1 {
+		fmt.Println("usage: gwm service stop <name>")
+		return 1
+	}
+
+	name := args[0]
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	out, err := a.ServiceStop.Execute(usecase.ServiceStopInput{
+		Name:         name,
+		WorktreePath: cwd,
+	})
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	for _, m := range out.Messages {
+		fmt.Println(m)
+	}
+	return 0
+}
+
+func (a *App) runServiceList(args []string) int {
+	out, err := a.ServiceList.Execute()
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	if len(out.Services) == 0 {
+		fmt.Println("no running services")
+		return 0
+	}
+
+	data, _ := json.MarshalIndent(out.Services, "", "  ")
+	fmt.Println(string(data))
+	return 0
+}
+
+func (a *App) runServiceAttach(args []string) int {
+	if len(args) < 1 {
+		fmt.Println("usage: gwm service attach <name>")
+		return 1
+	}
+
+	name := args[0]
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	if err := a.ServiceAttach.Execute(usecase.ServiceAttachInput{
+		Name:         name,
+		WorktreePath: cwd,
+	}); err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+	return 0
+}
+
+func (a *App) runServiceRemove(args []string) int {
+	if len(args) < 1 {
+		fmt.Println("usage: gwm service remove <name>")
+		return 1
+	}
+
+	if err := a.ServiceRemove.Execute(usecase.ServiceRemoveInput{
+		Name: args[0],
+	}); err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	fmt.Println("removed service definition:", args[0])
+	return 0
+}
+
+func (a *App) runServiceDefinitions(args []string) int {
+	out, err := a.ServiceDefinitionList.Execute()
+	if err != nil {
+		fmt.Println("error:", err)
+		return 1
+	}
+
+	if len(out.Definitions) == 0 {
+		fmt.Println("no service definitions")
+		return 0
+	}
+
+	data, _ := json.MarshalIndent(out.Definitions, "", "  ")
+	fmt.Println(string(data))
+	return 0
+}
+
+func reorderServiceAddArgs(args []string) []string {
+	return moveFirstPositionalArgToEnd(args)
+}
+
+func parsePort(s string) (domain.PortMode, int) {
+	if s == "" || s == "auto" {
+		return domain.PortModeAuto, 0
+	}
+	if s == "none" {
+		return domain.PortModeNone, 0
+	}
+	port, err := strconv.Atoi(s)
+	if err != nil {
+		return domain.PortModeAuto, 0
+	}
+	return domain.PortModeFixed, port
+}
+
+func printServiceUsage() {
+	fmt.Println("usage: gwm service <command>")
+	fmt.Println()
+	fmt.Println("commands:")
+	fmt.Println("  add <name> --command \"...\" [--port auto|none|<n>]  register service")
+	fmt.Println("  start <name>                                        start service")
+	fmt.Println("  stop <name>                                         stop service")
+	fmt.Println("  list                                                 list running services")
+	fmt.Println("  attach <name>                                        attach to service session")
+	fmt.Println("  remove <name>                                        remove service definition")
+	fmt.Println("  definitions                                          list service definitions")
 }
