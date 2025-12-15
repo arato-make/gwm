@@ -19,15 +19,13 @@ const sessionPrefix = "gwm-svc-"
 
 // Runner implements domain.ServiceRunner using tmux.
 type Runner struct {
-	server         *gotmux.Server
-	useControlMode bool
+	server *gotmux.Server
 }
 
 // NewRunner creates a Runner.
 func NewRunner(settings domain.Settings) *Runner {
 	return &Runner{
-		server:         gotmux.NewServer("", "", nil),
-		useControlMode: settings.TmuxControlMode,
+		server: gotmux.NewServer("", "", nil),
 	}
 }
 
@@ -142,12 +140,6 @@ func (r *Runner) Attach(sessionName string) error {
 	}
 
 	session := gotmux.Session{Name: sessionName}
-
-	if r.useControlMode && !gotmux.IsInsideTmux() {
-		args := []string{"-CC", "attach-session", "-t", sessionName}
-		return gotmux.ExecCmd(args)
-	}
-
 	return session.AttachSession()
 }
 

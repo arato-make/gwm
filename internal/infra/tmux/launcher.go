@@ -15,14 +15,12 @@ import (
 
 // Launcher implements domain.SessionLauncher using tmux with a shell fallback.
 type Launcher struct {
-	server         *gotmux.Server
-	useControlMode bool
+	server *gotmux.Server
 }
 
 func NewLauncher(settings domain.Settings) *Launcher {
 	return &Launcher{
-		server:         gotmux.NewServer("", "", nil),
-		useControlMode: settings.TmuxControlMode,
+		server: gotmux.NewServer("", "", nil),
 	}
 }
 
@@ -167,16 +165,6 @@ func printTmuxFailure(message string) {
 }
 
 func (l *Launcher) attachSession(session gotmux.Session) error {
-	// -CC での起動は tmux 外から制御モードで接続したい場合のみ使う。
-	if l.useControlMode && !gotmux.IsInsideTmux() {
-		args := []string{"-CC", "attach-session", "-t", session.Name}
-		if err := gotmux.ExecCmd(args); err != nil {
-			printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
-			return err
-		}
-		return nil
-	}
-
 	if err := session.AttachSession(); err != nil {
 		printTmuxFailure(fmt.Sprintf("セッションへの接続に失敗しました: %v", err))
 		return err

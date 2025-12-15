@@ -28,7 +28,7 @@ func TestLoad_ReadsFile(t *testing.T) {
 		t.Fatalf("failed to prepare dir: %v", err)
 	}
 
-	content := `{"tmuxControlMode": true}`
+	content := `{}`
 	if err := os.WriteFile(filepath.Join(gwmDir, "setting.json"), []byte(content), 0o644); err != nil {
 		t.Fatalf("failed to write file: %v", err)
 	}
@@ -38,7 +38,7 @@ func TestLoad_ReadsFile(t *testing.T) {
 		t.Fatalf("Load returned error: %v", err)
 	}
 
-	if !got.TmuxControlMode {
-		t.Fatalf("TmuxControlMode should be true, got %+v", got)
+	if got != domain.DefaultSettings() {
+		t.Fatalf("expected default settings, got %+v", got)
 	}
 }
