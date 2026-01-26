@@ -105,7 +105,7 @@ func (a *App) runConfig(args []string) int {
 func (a *App) runConfigAdd(args []string) int {
 	fs := flag.NewFlagSet("config add", flag.ContinueOnError)
 	fs.SetOutput(os.Stdout)
-	mode := fs.String("mode", "copy", "copy|symlink")
+	mode := fs.String("mode", "copy", "copy|symlink|substitute")
 	if err := fs.Parse(reorderConfigAddArgs(args)); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
 			return 0
@@ -113,7 +113,7 @@ func (a *App) runConfigAdd(args []string) int {
 		return 1
 	}
 	if fs.NArg() < 1 {
-		fmt.Println("usage: gwm config add <path> --mode copy|symlink")
+		fmt.Println("usage: gwm config add <path> --mode copy|symlink|substitute")
 		return 1
 	}
 	entry := domain.ConfigEntry{Path: fs.Arg(0), Mode: domain.Mode(*mode)}
@@ -304,7 +304,7 @@ func printRootUsage() {
 	fmt.Println()
 	fmt.Println("commands:")
 	fmt.Println("  create <branch>              create a worktree and expand config files")
-	fmt.Println("  config add <path> --mode ... manage tracked files (copy|symlink)")
+	fmt.Println("  config add <path> --mode ... manage tracked files (copy|symlink|substitute)")
 	fmt.Println("  config list                  list tracked files")
 	fmt.Println("  config remove <path>         untrack a file")
 	fmt.Println("  cd                           select and attach to a worktree")

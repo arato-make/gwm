@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/example/gwm/internal/domain"
 )
@@ -45,6 +46,16 @@ func (o *Operator) Deploy(entries []domain.ConfigEntry, worktreePath string) err
 			}
 			if err := os.Symlink(src, dst); err != nil {
 				return err
+			}
+		case domain.ModeSubstitute:
+			if e.Type == domain.EntryTypeDir {
+				if err := substituteDir(src, dst, o.repoDir, worktreePath); err != nil {
+					return err
+				}
+			} else {
+				if err := substituteFile(src, dst, o.repoDir, worktreePath); err != nil {
+					return err
+				}
 			}
 		default:
 			return fmt.Errorf("unknown mode: %s", e.Mode)
@@ -102,6 +113,53 @@ func copyDir(src, dst string) error {
 			continue
 		}
 		if err := copyFile(s, d); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func substituteFile(src, dst, repoDir, worktreeDir string) error {
+	content, err := os.ReadFile(src)
+	if err != nil {
+		return err
+	}
+
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+
+	replaced := strings.ReplaceAll(string(content), repoDir, worktreeDir)
+
+	if err := os.WriteFile(dst, []byte(replaced), srcInfo.Mode()); err != nil {
+		return err
+	}
+	return nil
+}
+
+func substituteDir(src, dst, repoDir, worktreeDir string) error {
+	info, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, info.Mode().Perm()); err != nil {
+		return err
+	}
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+	for _, entry := range entries {
+		s := filepath.Join(src, entry.Name())
+		d := filepath.Join(dst, entry.Name())
+		if entry.IsDir() {
+			if err := substituteDir(s, d, repoDir, worktreeDir); err != nil {
+				return err
+			}
+			continue
+		}
+		if err := substituteFile(s, d, repoDir, worktreeDir); err != nil {
 			return err
 		}
 	}

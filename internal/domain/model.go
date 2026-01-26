@@ -11,8 +11,9 @@ import (
 type Mode string
 
 const (
-	ModeCopy    Mode = "copy"
-	ModeSymlink Mode = "symlink"
+	ModeCopy       Mode = "copy"
+	ModeSymlink    Mode = "symlink"
+	ModeSubstitute Mode = "substitute"
 )
 
 // EntryType describes whether a config target is a file or directory.
@@ -39,7 +40,7 @@ func (c ConfigEntry) Validate() error {
 		return errors.New("path must be relative")
 	}
 	switch c.Mode {
-	case ModeCopy, ModeSymlink:
+	case ModeCopy, ModeSymlink, ModeSubstitute:
 	default:
 		return fmt.Errorf("unsupported mode: %s", c.Mode)
 	}

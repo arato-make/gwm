@@ -14,6 +14,7 @@ func TestConfigEntryValidate(t *testing.T) {
 	}{
 		{"ok copy", ConfigEntry{Path: "file.txt", Mode: ModeCopy, Type: EntryTypeFile}, false},
 		{"ok symlink dir", ConfigEntry{Path: "dir", Mode: ModeSymlink, Type: EntryTypeDir}, false},
+		{"ok substitute", ConfigEntry{Path: "config.json", Mode: ModeSubstitute, Type: EntryTypeFile}, false},
 		{"empty path", ConfigEntry{Path: "", Mode: ModeCopy, Type: EntryTypeFile}, true},
 		{"abs path", ConfigEntry{Path: "/abs", Mode: ModeCopy, Type: EntryTypeFile}, true},
 		{"bad mode", ConfigEntry{Path: "x", Mode: Mode("bad"), Type: EntryTypeFile}, true},

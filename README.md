@@ -5,10 +5,12 @@
 - `gwm create <branch>`
   - 指定ブランチがなければ、`origin/HEAD` が指すデフォルトブランチ（取得できない場合は `main`）から新規作成します。
   - リポジトリの親ディレクトリに `worktree/<branch>` として git worktree を追加します（例: `/home/repo` → `/home/worktree/<branch>`）。
-  - `.gwm/config.json` に登録されたファイルを worktree に展開します。`mode: copy` はファイルコピー、`mode: symlink` はシンボリックリンクで配置します。
+  - `.gwm/config.json` に登録されたファイルを worktree に展開します。`mode: copy` はファイルコピー、`mode: symlink` はシンボリックリンク、`mode: substitute` はパス置換コピーで配置します。
 
-- `gwm config add <path> --mode copy|symlink`
+- `gwm config add <path> --mode copy|symlink|substitute`
   - 管理対象ファイルを設定に追加します。`--mode` 省略時は `copy`。`path` はリポジトリ相対のみ許可され、重複登録はエラーになります。
+  - `substitute` モードは、ファイル内の元リポジトリの絶対パスを worktree の絶対パスに自動置換してコピーします。MCP設定ファイルなど絶対パスを含むファイルに便利です。
+    - 例: `/Users/user/project` → `/Users/user/worktree/feature-branch`
 
 - `gwm config list`
   - `.gwm/config.json` の内容を JSON で標準出力に表示します。登録が無い場合は `no entries` と表示します。
@@ -65,4 +67,4 @@
 
 - 設定は `.gwm/config.json` に JSON で保存されます（存在しない場合は自動作成）。
 - サービス定義は `.gwm/services.json` に JSON で保存されます。
-- 実行例: `go run . create feature/foo`、`go run . config add path/to/file --mode symlink`。
+- 実行例: `go run . create feature/foo`、`go run . config add path/to/file --mode symlink`、`go run . config add .mcp/config.json --mode substitute`。
