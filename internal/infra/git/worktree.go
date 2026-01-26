@@ -62,7 +62,8 @@ func (c *WorktreeClient) AddWorktree(branch string) (string, error) {
 		baseDir = c.gitDir
 	}
 
-	path := filepath.Join(baseDir, "worktrees", branch)
+	parentDir := filepath.Dir(baseDir)
+	path := filepath.Join(parentDir, "worktree", branch)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}

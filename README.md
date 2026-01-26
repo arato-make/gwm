@@ -4,7 +4,7 @@
 
 - `gwm create <branch>`
   - 指定ブランチがなければ、`origin/HEAD` が指すデフォルトブランチ（取得できない場合は `main`）から新規作成します。
-  - リポジトリ直下の `worktrees/<branch>` に git worktree を追加します。
+  - リポジトリの親ディレクトリに `worktree/<branch>` として git worktree を追加します（例: `/home/repo` → `/home/worktree/<branch>`）。
   - `.gwm/config.json` に登録されたファイルを worktree に展開します。`mode: copy` はファイルコピー、`mode: symlink` はシンボリックリンクで配置します。
 
 - `gwm config add <path> --mode copy|symlink`
@@ -21,7 +21,7 @@
   - 選択後は tmux セッション `gwm-<branch>` に attach（存在しない場合はカレントを `<branch>` で新規作成）。tmux が無い環境では従来どおりシェルを起動します。
 
 - `gwm remove <branch> [--force]`
-  - `git worktree remove` で `worktrees/<branch>` を削除します。`--force` を付けると未コミットの変更があっても削除します。
+  - `git worktree remove` で worktree を削除します。`--force` を付けると未コミットの変更があっても削除します。
   - 対応する tmux セッションがあれば終了させます（存在しない場合は何もしません）。
   - worktree で実行中のサービスも自動的に停止します。
 

@@ -33,7 +33,11 @@ func TestCreateBranchUsesCurrentBranch(t *testing.T) {
 }
 
 func TestDetectMainWorktreeDirAndAddWorktreeFromLinkedWorktree(t *testing.T) {
-	repoDir := t.TempDir()
+	baseDir := t.TempDir()
+	repoDir := filepath.Join(baseDir, "repo")
+	if err := os.MkdirAll(repoDir, 0o755); err != nil {
+		t.Fatalf("mkdir repo: %v", err)
+	}
 
 	runGit(t, repoDir, "-c", "init.defaultBranch=main", "init")
 	writeFile(t, filepath.Join(repoDir, "README.md"), "root\n")
@@ -41,7 +45,7 @@ func TestDetectMainWorktreeDirAndAddWorktreeFromLinkedWorktree(t *testing.T) {
 	runGit(t, repoDir, "commit", "-m", "init")
 
 	runGit(t, repoDir, "branch", "test")
-	linkedDir := filepath.Join(repoDir, "worktrees", "test")
+	linkedDir := filepath.Join(baseDir, "worktree", "test")
 	runGit(t, repoDir, "worktree", "add", linkedDir, "test")
 
 	mainDir, err := DetectMainWorktreeDir(linkedDir)
@@ -62,7 +66,7 @@ func TestDetectMainWorktreeDirAndAddWorktreeFromLinkedWorktree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("add worktree: %v", err)
 	}
-	want := filepath.Join(repoDir, "worktrees", "hoge")
+	want := filepath.Join(baseDir, "worktree", "hoge")
 	if filepath.Clean(canonicalize(t, path)) != filepath.Clean(canonicalize(t, want)) {
 		t.Fatalf("worktree path mismatch: got=%s want=%s", path, want)
 	}
